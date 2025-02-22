@@ -1,1 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>专业沟通风格测评</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        :root {
+            --primary: #3f51b5;
+            --secondary: #ff4081;
+            --bg: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        }
 
+        body {
+            font-family: 'Microsoft Yahei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .progress-box {
+            margin: 20px 0;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            width: 0;
+            transition: width 0.5s ease;
+        }
+
+        .options {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        .option-btn {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .animal-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin: 20px 0;
+        }
+
+        #radarChart {
+            max-width: 500px;
+            margin: 30px auto;
+        }
+
+        @media (max-width: 480px) {
+            .options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: var(--primary);">🦁 沟通风格测评 🦊</h1>
+        
+        <div class="progress-box">
+            <div class="progress-header">
+                <span>完成进度</span>
+                <span id="progressText">0/40</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+
+        <div id="questionContainer"></div>
+        
+        <div id="resultContainer" style="display: none;">
+            <canvas id="radarChart"></canvas>
+            <div id="animalResult"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="location.reload()" style="padding: 8px 20px;">重新测试</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 完整题目数据
+        const questions = [
+            { id: 1, options: ['A. 生动', 'B. 冒险', 'C. 善于分析', 'D. 适应性强'] },
+            { id: 2, options: ['A. 爱娱乐', 'B. 善于说服', 'C. 坚持不懈', 'D. 平和'] },
+            { id: 3, options: ['A. 善于社交', 'B. 意志坚定', 'C. 自我牺牲', 'D. 顺从'] },
+            { id: 4, options: ['A. 使人认同', 'B. 竞争性强', 'C. 有自制力', 'D. 体贴'] },
+            { id: 5, options: ['A. 使人振作', 'B. 善于应变', 'C. 受尊重', 'D. 含蓄'] },
+            { id: 6, options: ['A. 生气勃勃', 'B. 自信', 'C. 谨慎', 'D. 满足'] },
+            { id: 7, options: ['A. 推动者', 'B. 积极', 'C. 计划者', 'D. 耐心'] },
+            { id: 8, options: ['A. 无拘无束', 'B. 肯定', 'C. 有时间性', 'D. 温顺'] },
+            { id: 9, options: ['A. 乐观', 'B. 坦率', 'C. 井井有条', 'D. 好相处'] },
+            { id: 10, options: ['A. 有趣', 'B. 强迫性', 'C. 非理性', 'D. 友善'] },
+            { id: 11, options: ['A. 勇敢', 'B. 自信', 'C. 细节', 'D. 外交手腕'] },
+            { id: 12, options: ['A. 令人高兴', 'B. 自信', 'C. 文化修养', 'D. 有同情心'] },
+            { id: 13, options: ['A. 有激励性', 'B. 独立', 'C. 一丝不苟', 'D. 无攻击性'] },
+            { id: 14, options: ['A. 感情外露', 'B. 果断', 'C. 深沉', 'D. 忠诚'] },
+            { id: 15, options: ['A. 爱交朋友', 'B. 发起者', 'C. 音乐性', 'D. 调节者'] },
+            { id: 16, options: ['A. 多言', 'B. 执着', 'C. 考虑周到', 'D. 包容'] },
+            { id: 17, options: ['A. 活力充沛', 'B. 领导者', 'C. 爱思考', 'D. 聆听者'] },
+            { id: 18, options: ['A. 惹人喜爱', 'B. 首领', 'C. 制图者', 'D. 知足'] },
+            { id: 19, options: ['A. 受欢迎', 'B. 勤劳', 'C. 完美主义', 'D. 和气'] },
+            { id: 20, options: ['A. 思维跳跃', 'B. 无畏', 'C. 规范', 'D. 平衡'] },
+            { id: 21, options: ['A. 露骨', 'B. 专横', 'C. 乏味', 'D. 忸怩'] },
+            { id: 22, options: ['A. 散漫', 'B. 冷酷', 'C. 不知变通', 'D. 盲从'] },
+            { id: 23, options: ['A. 唠叨', 'B. 逆反', 'C. 怨恨', 'D. 保留'] },
+            { id: 24, options: ['A. 健忘', 'B. 直率', 'C. 挑剔', 'D. 胆小'] },
+            { id: 25, options: ['A. 爱插嘴', 'B. 急躁', 'C. 不安', 'D. 优柔寡断'] },
+            { id: 26, options: ['A. 难以预测', 'B. 缺乏同情', 'C. 不受欢迎', 'D. 委曲求全'] },
+            { id: 27, options: ['A. 即兴', 'B. 固执', 'C. 难以取悦', 'D. 犹豫不决'] },
+            { id: 28, options: ['A. 放任', 'B. 自省', 'C. 悲观', 'D. 平淡'] },
+            { id: 29, options: ['A. 易怒', 'B. 争吵', 'C. 自怜', 'D. 无目标'] },
+            { id: 30, options: ['A. 天真', 'B. 鲁莽', 'C. 消极', 'D. 迁就'] },
+            { id: 31, options: ['A. 喜欢认同', 'B. 工作狂', 'C. 不善交际', 'D. 担忧'] },
+            { id: 32, options: ['A. 喋喋不休', 'B. 不圆滑', 'C. 敏感', 'D. 胆怯'] },
+            { id: 33, options: ['A. 生活紊乱', 'B. 残忍', 'C. 抑郁', 'D. 睡眠'] },
+            { id: 34, options: ['A. 缺乏毅力', 'B. 不守信', 'C. 内向', 'D. 缺乏主见'] },
+            { id: 35, options: ['A. 杂乱无章', 'B. 喜欢操纵', 'C. 保守', 'D. 喃喃自语'] },
+            { id: 36, options: ['A. 好表现', 'B. 顽固', 'C. 有戒心', 'D. 缓慢'] },
+            { id: 37, options: ['A. 大嗓门', 'B. 控制欲', 'C. 孤僻', 'D. 懒惰'] },
+            { id: 38, options: ['A. 不专注', 'B. 武断', 'C. 多疑', 'D. 拖延'] },
+            { id: 39, options: ['A. 烦躁', 'B. 轻率', 'C. 吹毛求疵', 'D. 勉强'] },
+            { id: 40, options: ['A. 善变', 'B. 狡猾', 'C. 好批评', 'D. 妥协'] }
+        ];
+
+        // 动物类型描述
+        const animalDescriptions = {
+            A: {
+                name: '孔雀: 表现型',
+                image: 'https://cdn.jsdelivr.net/gh/zhengjiaxing/animal-backgrounds@main/peacock.png',
+                features: ['热情开放，充满能量','思维活跃，想法创新','喜欢与人保持互动','希望受人关注'],
+                communication: ['充满热情和感染力','喜欢形象化的描述','喜欢有新意、有亮点'],
+                dislikes: ['单一的呈现方式','过于细节的沟通']
+            },
+            B: {
+                name: '老虎: 控制型',
+                image: 'https://cdn.jsdelivr.net/gh/zhengjiaxing/animal-backgrounds@main/tiger.png',
+                features: ['非常进取，做事风风火火','行动力强，说干就干','凡事设立目标，强调结果','讲求效率，不在乎过程'],
+                communication: ['直截了当，有效率','有明确的观点','呈现清晰的结果'],
+                dislikes: ['海量信息无结论','啰嗦绕圈子','过于碍于人情']
+            },
+            C: {
+                name: '猫头鹰: 分析型',
+                image: 'https://cdn.jsdelivr.net/gh/zhengjiaxing/animal-backgrounds@main/owl.png',
+                features: ['非常理性，喜欢思考','说话做事有条理','细节控，完美主义','有计划，谨慎小心'],
+                communication: ['基于数据和事实','逻辑严密，条理清晰','提供尽可能多的细节'],
+                dislikes: ['只谈感受和概念','缺乏数据和分析']
+            },
+            D: {
+                name: '考拉: 友善型',
+                image: 'https://cdn.jsdelivr.net/gh/zhengjiaxing/animal-backgrounds@main/koala.png',
+                features: ['关心他人，有同理心','容易相处，好说话','默默付出和支持','注重团队和谐'],
+                communication: ['轻松和谐的氛围','沟通有铺垫，表达含蓄','对方主导'],
+                dislikes: ['沟通氛围太冷','只关注事不关注人','激烈的冲突']
+            }
+        };
+
+        let currentQuestion = 0;
+        let counts = { A:0, B:0, C:0, D:0 };
+        let radarChart = null;
+
+        // 初始化测试
+        function initTest() {
+            try {
+                const saved = localStorage.getItem('communicationTest');
+                if(saved) {
+                    const data = JSON.parse(saved);
+                    currentQuestion = data.current;
+                    counts = data.counts;
+                    if(currentQuestion >= 40) resetTest();
+                }
+                renderQuestion();
+                updateProgress();
+            } catch(e) {
+                alert('加载失败，请刷新页面');
+                resetTest();
+            }
+        }
+
+        // 渲染题目
+        function renderQuestion() {
+            const container = document.getElementById('questionContainer');
+            const q = questions[currentQuestion];
+            
+            container.innerHTML = `
+                <div class="question-box">
+                    <h3>第 ${q.id} 题</h3>
+                    <p>请选择最符合你的描述：</p>
+                    <div class="options" id="optionsContainer">
+                        ${q.options.map((opt, i) => `
+                            <button class="option-btn" data-type="${opt[0]}">
+                                ${['🦚','🐯','🦉','🐨'][i]} ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            // 事件委托绑定
+            document.getElementById('optionsContainer').addEventListener('click', function(e) {
+                const btn = e.target.closest('.option-btn');
+                if(btn) handleSelect(btn.dataset.type);
+            });
+        }
+
+        // 处理选择
+        function handleSelect(type) {
+            counts[type]++;
+            currentQuestion++;
+            
+            if(currentQuestion < 40) {
+                saveProgress();
+                renderQuestion();
+                updateProgress();
+            } else {
+                showResult();
+                localStorage.removeItem('communicationTest');
+            }
+        }
+
+        // 显示结果
+        function showResult() {
+            document.getElementById('questionContainer').style.display = 'none';
+            document.getElementById('resultContainer').style.display = 'block';
+
+            // 确定主导类型
+            const dominant = Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+            const animal = animalDescriptions[dominant];
+
+            // 绘制雷达图
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if(radarChart) radarChart.destroy();
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: Object.values(animalDescriptions).map(a => a.name.split(':')[0]),
+                    datasets: [{
+                        label: '得分分布',
+                        data: Object.values(counts),
+                        backgroundColor: 'rgba(63, 81, 181, 0.2)',
+                        borderColor: 'rgba(63, 81, 181, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: Math.max(...Object.values(counts)) + 2
+                        }
+                    }
+                }
+            });
+
+            // 显示动物信息
+            document.getElementById('animalResult').innerHTML = `
+                <div class="animal-card">
+                    <h2 style="color: var(--primary);">${animal.name}</h2>
+                    <img src="${animal.image}" loading="lazy" style="width:200px;height:auto;margin:15px auto;display:block;">
+                    <h3>✧ 主要特征</h3>
+                    <ul>${animal.features.map(f => `<li>${f}</li>`).join('')}</ul>
+                    <h3>✓ 推荐沟通方式</h3>
+                    <ul>${animal.communication.map(c => `<li>${c}</li>`).join('')}</ul>
+                    <h3>✗ 避免沟通方式</h3>
+                    <ul>${animal.dislikes.map(d => `<li>${d}</li>`).join('')}</ul>
+                </div>
+            `;
+        }
+
+        // 辅助函数
+        function updateProgress() {
+            const progress = (currentQuestion / 40 * 100).toFixed(1);
+            document.querySelector('.progress-fill').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${currentQuestion}/40`;
+        }
+
+        function saveProgress() {
+            localStorage.setItem('communicationTest', JSON.stringify({
+                current: currentQuestion,
+                counts: counts
+            }));
+        }
+
+        function resetTest() {
+            currentQuestion = 0;
+            counts = { A:0, B:0, C:0, D:0 };
+            localStorage.removeItem('communicationTest');
+        }
+
+        // 启动测试
+        document.addEventListener('DOMContentLoaded', initTest);
+    </script>
+</body>
+</html>
